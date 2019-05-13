@@ -64,11 +64,11 @@ class TheRoom:
         if objective is None:
             objective = [7, 9]
 
-        if rdm_error is True:
-            self.rdm_error = True
-            self.action_suc = [1, 0]  # yes, no
-            self.action_suc_prob = [2 / 3, 1 / 3]  # prob yes, prob no
-            self.action_failed = [1 / 3, 1 / 3, 1 / 3]  # if action failed, take another one with this prob distr
+        # if rdm_error is True:
+        #     self.rdm_error = True
+        #     self.action_suc = [1, 0]  # yes, no
+        #     self.action_suc_prob = [2 / 3, 1 / 3]  # prob yes, prob no
+        #     self.action_failed = [1 / 3, 1 / 3, 1 / 3]  # if action failed, take another one with this prob distr
 
         self.options = options
         self.objective = objective
@@ -105,27 +105,27 @@ class TheRoom:
         :return:
         """
 
-        if rdm:
-
-            # columns limits
-            col_limit = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11]
-
-            # rows limits
-            row_limit = [[1, 2, 3, 4, 5, 7, 8, 9, 10, 11],
-                         [1, 2, 3, 4, 5, 6, 8, 9, 10, 11]]
-
-            y = random.choices(col_limit)[0]
-
-            # pick a random position instead of a random value, each side of the model has a different set of possible rows
-            x = random.choices(range(0, len(row_limit[0])))[0]
-
-            # model isn't symmetric, must pick a side before picking a row
-            side = 0 if y < 6 else 1
-
-            self.state = [row_limit[side][x], y]
-
-        else:
-            self.state = self.initial_state
+        # if rdm:
+        #
+        #     # columns limits
+        #     col_limit = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11]
+        #
+        #     # rows limits
+        #     row_limit = [[1, 2, 3, 4, 5, 7, 8, 9, 10, 11],
+        #                  [1, 2, 3, 4, 5, 6, 8, 9, 10, 11]]
+        #
+        #     y = random.choices(col_limit)[0]
+        #
+        #     # pick a random position instead of a random value, each side of the model has a different set of possible rows
+        #     x = random.choices(range(0, len(row_limit[0])))[0]
+        #
+        #     # model isn't symmetric, must pick a side before picking a row
+        #     side = 0 if y < 6 else 1
+        #
+        #     self.state = [row_limit[side][x], y]
+        #
+        # else:
+        self.state = self.initial_state
 
         return tuple(self.state)
 
@@ -159,25 +159,26 @@ class TheRoom:
             state = self.state
 
         # if there is chance of error on the action execution
-        if rdm_error:
+        # if rdm_error:
+        #
+        #     # check success
+        #     success = random.choices(self.action_suc, self.action_suc_prob)[0]
+        #
+        #     # if failed
+        #     if success == 0:
+        #         # take all other actions
+        #         other_actions = [act for act in self.primordial_actions_space if action != act]
+        #
+        #         # and select one of them randomly, 1/3 chance each
+        #         final_action = random.choices(other_actions, self.action_failed)[0]
+        #
+        #     # success, keep action
+        #     else:
+        #         final_action = action
+        #
+        # else:
 
-            # check success
-            success = random.choices(self.action_suc, self.action_suc_prob)[0]
-
-            # if failed
-            if success == 0:
-                # take all other actions
-                other_actions = [act for act in self.primordial_actions_space if action != act]
-
-                # and select one of them randomly, 1/3 chance each
-                final_action = random.choices(other_actions, self.action_failed)[0]
-
-            # success, keep action
-            else:
-                final_action = action
-
-        else:
-            final_action = action
+        final_action = action
 
         target_state = list(map(add, state, self.act(final_action)))
 
