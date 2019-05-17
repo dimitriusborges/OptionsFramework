@@ -10,10 +10,10 @@ Since this values are updated during the Agent-Environment interactions, there i
 tribution to forecast results and apply the bellman equation 
 """
 
-ALPHA = 0.4
-GAMMA = 0.99
+ALPHA = 0.2
+GAMMA = 0.95
 
-EPSILON = 0.1
+EPSILON = 0.2
 UPDATE = 1000000000
 DECAY = 0.02
 MIN_EPSILON = 0.02
@@ -205,7 +205,7 @@ class AgentQ:
                 """"""
                 if verbose:
 
-                    if total_interactions > 20000:
+                    if verbose:
                         print(memory_steps)
                         print("Solved in {} episodes, with a total of {} interactions. "
                               "Best result was {}".format(episodes, total_interactions, min(memory_steps)))

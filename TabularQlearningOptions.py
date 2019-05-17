@@ -13,11 +13,13 @@ q-table per option.
 
 """
 
-GAMMA = 0.9
-EPSILON = 0.3
-ALPHA = 0.2
-TEST_EPISODES = 20
-MEM_STEPS = 5
+GAMMA = 0.95
+EPSILON = 0.1
+ALPHA = 0.4
+
+UPDATE = 1000000000
+DECAY = 0.02
+MIN_EPSILON = 0.02
 
 
 class AgentQO:
@@ -462,11 +464,20 @@ class AgentQO:
         total_steps = opt_conv_steps + model_conv_steps
         print("The model executed {} steps on the enviroment".format(total_steps))
 
-    def training(self):
+    def training(self, verbose=False):
         """
         Training both model and options
         :return:
         """
+        self.q_table.clear()
+        self.q_table_o1.clear()
+        self.q_table_o2.clear()
+        self.q_table_o3.clear()
+        self.q_table_o4.clear()
+        self.q_table_o5.clear()
+        self.q_table_o6.clear()
+        self.q_table_o7.clear()
+        self.q_table_o8.clear()
 
         self.env = TheRoom((1, 1), (7, 9))
 
@@ -474,7 +485,6 @@ class AgentQO:
         explore = EPSILON
         model_conv_steps = 0
         min_steps = 9999
-        count_conv = 0
 
         while 1:
 
@@ -485,30 +495,97 @@ class AgentQO:
             # min tracer
             if steps < min_steps:
                 min_steps = steps
-                print("New min foound {}, on episode {}".format(min_steps, episodes))
-                count_conv = 0
 
-            elif steps == min_steps:
-                count_conv += 1
+                # if verbose:
+                #     print("New min foound {}, on episode {}".format(min_steps, episodes))
 
-            else:
-                count_conv = 0
+            if episodes % UPDATE == 0:
 
-            # epsilon adjustment
-            if episodes % 5 == 0:
-                if explore < 0.1:
-                    explore = 0.01
+                if explore < DECAY:
+                    explore = MIN_EPSILON
                 else:
-                    explore = explore - 0.1
+                    explore = explore - DECAY
 
             # 5 consecutive mins = convergence
             if min_steps == 14:
-                print("Model converged on {} episodes, after executing {} steps. "
-                      "Best result was {} steps".format(episodes, model_conv_steps, min_steps))
+
+                if verbose:
+                    print("Model converged on {} episodes, after executing {} steps. "
+                          "Best result was {} steps".format(episodes, model_conv_steps, min_steps))
                 break
+
+        return episodes, model_conv_steps
+
+    def random_hyper_parameter_tuning(self):
+        """
+        :return:
+        """
+
+        episodes = []
+        interactions = []
+
+        epsilons = [0.01, 0.1, 0.2, 0.3]
+        alphas = [0.1, 0.2, 0.3, 0.4]
+        gammas = [0.9, 0.95, 0.99]
+
+        trained = []
+
+        best_steps = 9999999
+        best_hyper = 0
+
+        train_test = 0
+        while 1:
+
+            if len(trained) >= (len(epsilons)*len(alphas)*len(gammas)):
+                break
+
+            else:
+
+                EPSILON = random.choices(epsilons)[0]
+                ALPHA = random.choices(alphas)[0]
+                GAMMA = random.choices(gammas)[0]
+
+                train = (EPSILON, ALPHA, GAMMA)
+
+                if train in trained:
+                    continue
+                else:
+                    trained.append(train)
+
+                episodes.clear()
+                interactions.clear()
+
+                print(train_test)
+
+                for _ in range(50):
+                    # print("Test:", train_test, _)
+                    ep, inter = self.training()
+
+                    episodes.append(ep)
+                    interactions.append(inter)
+
+                m_int = np.mean(interactions)
+
+                if best_steps > m_int:
+
+                    best_steps = m_int
+                    best_hyper = train
+                    print("new min: {}. Parameters {}".format(best_steps, best_hyper))
+
+                train_test += 1
+
+        print("Best steps: {}. Best parameters {}.".format(best_steps, best_hyper))
 
 
 if __name__ == "__main__":
 
     agent = AgentQO()
-    agent.training()
+    EPSILON = 0.1
+    ALPHA = 0.4
+    GAMMA = 0.95
+
+    # for _ in range(10):
+    #     agent.training(True)
+
+    agent.random_hyper_parameter_tuning()
+

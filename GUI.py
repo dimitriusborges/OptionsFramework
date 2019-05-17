@@ -141,13 +141,14 @@ if __name__ == "__main__":
     agentqo = AgentQO()
     agentqoa = AgentQOA()
 
-    agentq.training()
-    agentqo.training()
-    agentqoa.training()
+    agentq.training(True)
+    time.sleep(1)
+    agentqo.training(True)
+    time.sleep(1)
+    agentqoa.training(True)
 
     gui = Gui([agentq, agentqo, agentqoa], [agentq.env, agentqo.env, agentqoa.env])
 
-    time.sleep(1)
     gui.open_window()
 
 
