@@ -10,11 +10,13 @@ Since this values are updated during the Agent-Environment interactions, there i
 tribution to forecast results and apply the bellman equation 
 """
 
-GAMMA = 0.9
-EPSILON = 0.2
-ALPHA = 0.2
-TEST_EPISODES = 20
-MEM_STEPS = 5
+ALPHA = 0.4
+GAMMA = 0.99
+
+EPSILON = 0.1
+UPDATE = 1000000000
+DECAY = 0.02
+MIN_EPSILON = 0.02
 
 
 class AgentQ:
@@ -167,7 +169,7 @@ class AgentQ:
 
         return new_state, is_done
 
-    def training(self):
+    def training(self, verbose=False):
         """
         Execute several episodes, until the mean of the last 10 reaches a desired threshold
         :return:
@@ -177,7 +179,8 @@ class AgentQ:
         episodes = 0
         memory_steps = []   # save the steps of the last 10 episodes
         total_interactions = 0
-        min_steps = 99999
+
+        self.q_table.clear()
 
         while 1:
 
@@ -191,29 +194,93 @@ class AgentQ:
             memory_steps.append(steps)
             total_interactions = total_interactions + steps
 
-            if episodes % 10 == 0:
+            if episodes % UPDATE == 0:
 
-                # if min_steps > min(memory_steps):
-                #     min_steps = min(memory_steps)
-                #
-                # print("Steps from last 10 episodes {}".format(memory_steps))
-
-                if explore < 0.1:
-                    explore = 0.01
+                if explore < DECAY:
+                    explore = MIN_EPSILON
                 else:
-                    explore = explore - 0.1
+                    explore = explore - DECAY
 
-            # if len(memory_steps) >= 10 and np.var(memory_steps) < 1:
             if min(memory_steps) < 18:
-                print(memory_steps)
-                print("Solved in {} episodes, with a total of {} interactions. "
-                      "Best result was {}".format(episodes, total_interactions, min(memory_steps)))
+                """"""
+                if verbose:
+
+                    if total_interactions > 20000:
+                        print(memory_steps)
+                        print("Solved in {} episodes, with a total of {} interactions. "
+                              "Best result was {}".format(episodes, total_interactions, min(memory_steps)))
 
                 break
+
+        return episodes, total_interactions
+
+    def random_hyper_parameter_tuning(self):
+        """
+        :return:
+        """
+
+        episodes = []
+        interactions = []
+
+        epsilons = [0.01, 0.1, 0.2, 0.3]
+        alphas = [0.1, 0.2, 0.3, 0.4]
+        gammas = [0.9, 0.95, 0.99]
+
+        trained = []
+
+        best_steps = 9999999
+        best_hyper = 0
+
+        train_test = 0
+        while 1:
+
+            if len(trained) >= (len(epsilons)*len(alphas)*len(gammas)):
+                break
+
+            else:
+
+                EPSILON = random.choices(epsilons)[0]
+                ALPHA = random.choices(alphas)[0]
+                GAMMA = random.choices(gammas)[0]
+
+                train = (EPSILON, ALPHA, GAMMA)
+
+                if train in trained:
+                    continue
+                else:
+                    trained.append(train)
+
+                episodes.clear()
+                interactions.clear()
+
+                print(train_test)
+
+                for _ in range(100):
+                    # print("Test:", train_test, _)
+                    ep, inter = self.training()
+
+                    episodes.append(ep)
+                    interactions.append(inter)
+
+                m_int = np.mean(interactions)
+
+                if best_steps > m_int:
+
+                    best_steps = m_int
+                    best_hyper = train
+                    print("new min: {}. Parameters {}".format(best_steps, best_hyper))
+
+                train_test += 1
+
+        print("Best steps: {}. Best parameters {}.".format(best_steps, best_hyper))
 
 
 if __name__ == "__main__":
 
     agent = AgentQ()
-    agent.training()
-
+    EPSILON = 0.2
+    ALPHA = 0.2
+    GAMMA = 0.95
+    for _ in range(50):
+        agent.training(verbose=True)
+    # agent.random_hyper_parameter_tuning()
