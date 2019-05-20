@@ -10,13 +10,16 @@ Since this values are updated during the Agent-Environment interactions, there i
 tribution to forecast results and apply the bellman equation 
 """
 
-ALPHA = 0.2
-GAMMA = 0.95
-
 EPSILON = 0.2
+ALPHA = 0.4
+GAMMA = 0.9
+
 UPDATE = 1000000000
 DECAY = 0.02
 MIN_EPSILON = 0.02
+TRAINING = 50
+CONVERGENCE = 17
+TEST = 1
 
 
 class AgentQ:
@@ -201,7 +204,7 @@ class AgentQ:
                 else:
                     explore = explore - DECAY
 
-            if min(memory_steps) < 18:
+            if min(memory_steps) <= CONVERGENCE:
                 """"""
                 if verbose:
 
@@ -222,13 +225,14 @@ class AgentQ:
         episodes = []
         interactions = []
 
-        epsilons = [0.01, 0.1, 0.2, 0.3]
-        alphas = [0.1, 0.2, 0.3, 0.4]
-        gammas = [0.9, 0.95, 0.99]
+        epsilons = [0.1, 0.2, 0.01]     # [0.01, 0.1, 0.2, 0.3]
+        alphas = [0.4, 0.2, 0.3]        # [0.1, 0.2, 0.3, 0.4, 0.5, 1]
+        gammas = [0.99, 0.95, 0.9]      # [0.9, 0.95, 0.99]
 
         trained = []
 
         best_steps = 9999999
+        lower_std = 999999
         best_hyper = 0
 
         train_test = 0
@@ -253,34 +257,37 @@ class AgentQ:
                 episodes.clear()
                 interactions.clear()
 
-                print(train_test)
+                print("Training {}, with {}".format(train_test, train))
 
-                for _ in range(100):
+                for _ in range(TRAINING):
                     # print("Test:", train_test, _)
                     ep, inter = self.training()
 
                     episodes.append(ep)
                     interactions.append(inter)
 
-                m_int = np.mean(interactions)
+                mean_int = np.mean(interactions)
+                std_int = np.std(interactions)
 
-                if best_steps > m_int:
+                if mean_int < best_steps and std_int < lower_std:
 
-                    best_steps = m_int
+                    best_steps = mean_int
+                    lower_std = std_int
                     best_hyper = train
-                    print("new min: {}. Parameters {}".format(best_steps, best_hyper))
+                    print("new min: {}, std {}. Parameters {}".format(best_steps, lower_std, best_hyper))
 
                 train_test += 1
 
-        print("Best steps: {}. Best parameters {}.".format(best_steps, best_hyper))
+        print("Best steps: {}, std {}. Best parameters {}.".format(best_steps, lower_std, best_hyper))
 
 
 if __name__ == "__main__":
 
     agent = AgentQ()
-    EPSILON = 0.2
-    ALPHA = 0.2
-    GAMMA = 0.95
-    for _ in range(50):
-        agent.training(verbose=True)
-    # agent.random_hyper_parameter_tuning()
+
+    if TEST == 1:
+        for _ in range(10):
+            agent.training(verbose=True)
+
+    else:
+        agent.random_hyper_parameter_tuning()

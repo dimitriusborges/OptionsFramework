@@ -14,13 +14,20 @@ q-table per option.
 
 """
 
-GAMMA = 0.9
 EPSILON = 0.2
-ALPHA = 0.4
+ALPHA = 1
+GAMMA = 0.9
+
+EPSILON_OPT = 0.1
+ALPHA_OPT = 1
+GAMMA_OPT = 0.9
 
 UPDATE = 1000000000
 DECAY = 0.02
 MIN_EPSILON = 0.02
+TRAINING = 50
+CONVERGENCE = 17
+TEST = 0
 
 
 class AgentQOA:
@@ -29,7 +36,7 @@ class AgentQOA:
         """
         Agent is the entity that interacts with the environment
         """
-        self.env = TheRoom(initial_state=(1, 1), objective=(7, 9),)     # options=True)
+        self.env = TheRoom(initial_state=(1, 1), objective=(10, 9))     # options=True)
 
         # general Q-table, with 0 as default value
         self.q_table = collections.defaultdict(float)
@@ -211,10 +218,17 @@ class AgentQOA:
 
         best_v, _ = self.best_value_and_action(next_s, q_table, 2)
 
-        old_val = q_table[(state, action)]
-        new_val = reward + (GAMMA ** steps) * best_v
+        if steps > 1:
+            alpha = ALPHA_OPT
+            gamma = GAMMA_OPT
+        else:
+            alpha = ALPHA
+            gamma = GAMMA
 
-        q_table[(state, action)] = (1 - ALPHA) * old_val + ALPHA * new_val
+        old_val = q_table[(state, action)]
+        new_val = reward + (gamma ** steps) * best_v
+
+        q_table[(state, action)] = (1 - alpha) * old_val + alpha * new_val
 
     def play_episode(self, explore=0.0, options_trained=True):
         """
@@ -228,7 +242,7 @@ class AgentQOA:
         if options_trained is True:
             options_explore = 0.0
         else:
-            options_explore = explore
+            options_explore = EPSILON_OPT
 
         # number of steps (k = 1) taken until the objective
         total_steps = 0
@@ -385,17 +399,14 @@ class AgentQOA:
         self.q_table_o7.clear()
         self.q_table_o8.clear()
 
-        self.env = TheRoom((1, 1), (10, 9))
-
         episodes = 0
         explore = EPSILON
         model_conv_steps = 0
-        min_steps = 9999
-        count_conv = 0
+        min_steps = 99999999
 
         while 1:
 
-            steps = self.play_episode(explore=0.2, options_trained=False)
+            steps = self.play_episode(explore, options_trained=False)
             episodes += 1
             model_conv_steps += steps
 
@@ -405,14 +416,6 @@ class AgentQOA:
                 # if verbose:
                 #     print("New min found {}, on episode {}".format(min_steps, episodes))
 
-                count_conv = 0
-
-            elif steps == min_steps:
-                count_conv += 1
-
-            else:
-                count_conv = 0
-
             if episodes % UPDATE == 0:
 
                 if explore < DECAY:
@@ -421,7 +424,7 @@ class AgentQOA:
                     explore = explore - DECAY
 
             # 5 consecutive mins = convergence
-            if min_steps < 18:
+            if min_steps <= CONVERGENCE:
                 if verbose:
                     print("Model converged on {} episodes, after executing {} steps. "
                           "Best result was {} steps".format(episodes, model_conv_steps, min_steps))
@@ -437,13 +440,14 @@ class AgentQOA:
         episodes = []
         interactions = []
 
-        epsilons = [0.01, 0.1, 0.2, 0.3]
-        alphas = [0.1, 0.2, 0.3, 0.4]
-        gammas = [0.9, 0.95, 0.99]
+        epsilons = [0.2, 0.3, 0.1]        # [0.01, 0.1, 0.2, 0.3]
+        alphas = [0.2, 0.3, 0.5, 1]             # [0.1, 0.2, 0.3, 0.4, 0.5, 1]
+        gammas = [0.9, 0.95, 0.99]              # [0.9, 0.95, 0.99]
 
         trained = []
 
         best_steps = 9999999
+        lower_std = 999999
         best_hyper = 0
 
         train_test = 0
@@ -468,37 +472,36 @@ class AgentQOA:
                 episodes.clear()
                 interactions.clear()
 
-                print(train_test)
+                print("Training {}, with {}".format(train_test, train))
 
-                for _ in range(100):
+                for _ in range(TRAINING):
                     # print("Test:", train_test, _)
                     ep, inter = self.training()
 
                     episodes.append(ep)
                     interactions.append(inter)
 
-                m_int = np.mean(interactions)
+                mean_int = np.mean(interactions)
+                std_int = np.std(interactions)
 
-                if best_steps > m_int:
+                if mean_int < best_steps and std_int < lower_std:
 
-                    best_steps = m_int
+                    best_steps = mean_int
+                    lower_std = std_int
                     best_hyper = train
-                    print("new min: {}. Parameters {}".format(best_steps, best_hyper))
+                    print("new min: {}, std {}. Parameters {}".format(best_steps, lower_std, best_hyper))
 
                 train_test += 1
 
-        print("Best steps: {}. Best parameters {}.".format(best_steps, best_hyper))
+        print("Best steps: {}, std {}. Best parameters {}.".format(best_steps, lower_std, best_hyper))
 
 
 if __name__ == "__main__":
 
     agent = AgentQOA()
 
-    EPSILON = 0.2
-    ALPHA = 0.4
-    GAMMA = 0.9
-
-    for _ in range(10):
-        agent.training(True)
-
-    # agent.random_hyper_parameter_tuning()
+    if TEST == 1:
+        for _ in range(25):
+            agent.training(True)
+    else:
+        agent.random_hyper_parameter_tuning()

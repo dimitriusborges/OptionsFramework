@@ -13,13 +13,16 @@ q-table per option.
 
 """
 
-GAMMA = 0.95
 EPSILON = 0.1
-ALPHA = 0.4
+ALPHA = 1
+GAMMA = 0.9
 
 UPDATE = 1000000000
 DECAY = 0.02
 MIN_EPSILON = 0.02
+TRAINING = 50
+CONVERGENCE = 14
+TEST = 1
 
 
 class AgentQO:
@@ -343,127 +346,6 @@ class AgentQO:
 
         return total_reward, total_steps, state
 
-    def traininig_options(self):
-        """
-        Train all the options
-        :return:
-        """
-
-        # each option has a strict set of states that can initialize them. So, to train each one, it is necessarily
-        # to adjust the starting point
-        initial_states = {self.env.room1: (1, 1),
-                          self.env.room2: (1, 11),
-                          self.env.room3: (11, 1),
-                          self.env.room4: (11, 11)}
-
-        # number of steps taken until the solution
-        total_steps = 0
-
-        for option in self.options_space:
-
-            limits = self.options_I[option]
-
-            initial_state = initial_states[limits[0]]
-
-            self.env = TheRoom(initial_state, (7, 9))
-
-            explore = 0.25 #EPSILON
-
-            # How many consecutive episodes reached the obj using minimum steps
-            conv_counting = 0
-
-            episodes = 0
-            min_steps = 9999
-            steps_until_conv = 0
-
-            while True:
-
-                episodes += 1
-
-                # epsilon adjustment
-                if episodes % 5 == 0:
-
-                    if explore < 0.1:
-                        explore = 0.01
-                    else:
-                        explore = explore - 0.1
-
-                # returns the number of steps until the obj was reached
-                _, option_steps, _ = agent.play_option(option, explore)
-
-                steps_until_conv += option_steps
-
-                # min steps tracer
-                if option_steps < min_steps:
-                    min_steps = option_steps
-                    conv_counting = 0
-
-                elif option_steps == min_steps:
-                    conv_counting += 1
-
-                else:
-                    conv_counting = 0
-
-                # 5 times the same min is considered a convergence
-                if conv_counting >= 5:
-                    print("Option {} converged with {} steps, after {} total steps and {} episodes"
-                          .format(option, min_steps, steps_until_conv, episodes))
-                    total_steps += steps_until_conv
-                    break
-
-        print("All options trained in {} steps".format(total_steps))
-
-        return total_steps
-
-    def training_model(self):
-        """
-        Train the model using already trained options
-        :return:
-        """
-        opt_conv_steps = self.traininig_options()
-
-        self.env = TheRoom((1, 1), (7, 9))
-
-        episodes = 0
-        explore = EPSILON
-        model_conv_steps = 0
-        min_steps = 9999
-        count_conv = 0
-
-        while 1:
-
-            steps = self.play_episode(explore)
-            episodes += 1
-            model_conv_steps += steps
-
-            # min tracer
-            if steps < min_steps:
-
-                min_steps = steps
-                count_conv = 0
-
-            elif steps == min_steps:
-                count_conv += 1
-
-            else:
-                count_conv = 0
-
-            # epsilon adjustment
-            if episodes % 5 == 0:
-                if explore <= 0.1:
-                    explore = 0.01
-                else:
-                    explore = explore - 0.1
-
-            # 5 consecutive mins = convergence
-            if count_conv >= 5:
-                print("Model converged on {} episodes, after executing {} steps. "
-                      "Best result was {} steps".format(episodes, model_conv_steps, min_steps))
-                break
-
-        total_steps = opt_conv_steps + model_conv_steps
-        print("The model executed {} steps on the enviroment".format(total_steps))
-
     def training(self, verbose=False):
         """
         Training both model and options
@@ -506,8 +388,7 @@ class AgentQO:
                 else:
                     explore = explore - DECAY
 
-            # 5 consecutive mins = convergence
-            if min_steps == 14:
+            if min_steps <= CONVERGENCE:
 
                 if verbose:
                     print("Model converged on {} episodes, after executing {} steps. "
@@ -524,13 +405,14 @@ class AgentQO:
         episodes = []
         interactions = []
 
-        epsilons = [0.01, 0.1, 0.2, 0.3]
-        alphas = [0.1, 0.2, 0.3, 0.4]
-        gammas = [0.9, 0.95, 0.99]
+        epsilons = [0.3, 0.1, 0.2]  # [0.01, 0.1, 0.2, 0.3]
+        alphas = [0.4, 0.2, 0.1]    # [0.1, 0.2, 0.3, 0.4, 0.5, 1]
+        gammas = [0.9, 0.95, 0.99]  # [0.9, 0.95, 0.99]
 
         trained = []
 
         best_steps = 9999999
+        lower_std = 999999
         best_hyper = 0
 
         train_test = 0
@@ -555,37 +437,37 @@ class AgentQO:
                 episodes.clear()
                 interactions.clear()
 
-                print(train_test)
+                print("Training {}, with {}".format(train_test, train))
 
-                for _ in range(50):
+                for _ in range(TRAINING):
                     # print("Test:", train_test, _)
                     ep, inter = self.training()
 
                     episodes.append(ep)
                     interactions.append(inter)
 
-                m_int = np.mean(interactions)
+                mean_int = np.mean(interactions)
+                std_int = np.std(interactions)
 
-                if best_steps > m_int:
+                if mean_int < best_steps and std_int < lower_std:
 
-                    best_steps = m_int
+                    best_steps = mean_int
+                    lower_std = std_int
                     best_hyper = train
-                    print("new min: {}. Parameters {}".format(best_steps, best_hyper))
+                    print("new min: {}, std {}. Parameters {}".format(best_steps, lower_std, best_hyper))
 
                 train_test += 1
 
-        print("Best steps: {}. Best parameters {}.".format(best_steps, best_hyper))
+        print("Best steps: {}, std {}. Best parameters {}.".format(best_steps, lower_std, best_hyper))
 
 
 if __name__ == "__main__":
 
     agent = AgentQO()
-    EPSILON = 0.1
-    ALPHA = 0.4
-    GAMMA = 0.95
 
-    # for _ in range(10):
-    #     agent.training(True)
-
-    agent.random_hyper_parameter_tuning()
+    if TEST == 1:
+        for _ in range(20):
+            agent.training(True)
+    else:
+        agent.random_hyper_parameter_tuning()
 
