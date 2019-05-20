@@ -103,7 +103,7 @@ class Gui:
         self.restart.config(state='disabled')
 
     def anim_agent(self):
-
+        total_steps = 0
         while self.stopped:
             time.sleep(0.3)
 
@@ -118,14 +118,21 @@ class Gui:
             self.place_agent()
             time.sleep(0.2)
 
+            total_steps += 1
+
             if is_done:
+
                 self.restart.config(state='active')
                 self.restart.config(text='Restart')
                 self.stopped = True
+
+                print("Executed in {} actions".format(total_steps))
                 while self.stopped:
                     time.sleep(0.3)
 
                 time.sleep(0.5)
+
+                total_steps = 0
 
                 self.restart.config(state='disabled')
 

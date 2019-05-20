@@ -27,7 +27,7 @@ DECAY = 0.02
 MIN_EPSILON = 0.02
 TRAINING = 50
 CONVERGENCE = 17
-TEST = 0
+TEST = 1
 
 
 class AgentQOA:
@@ -151,8 +151,8 @@ class AgentQOA:
                 best_value = action_value
                 best_action = action
 
-            elif best_value == action_value:
-                best_value = random.choices([best_value, action_value])[0]
+            # elif best_value == action_value:
+            #     best_value = random.choices([best_value, action_value])[0]
 
         return best_value, best_action
 

@@ -69,8 +69,8 @@ class AgentQ:
                 best_value = action_value
                 best_action = action
 
-            elif best_value == action_value:
-                best_value = random.choices([best_value, action_value])[0]
+            # elif best_value == action_value:
+            #     best_value = random.choices([best_value, action_value])[0]
 
         return best_value, best_action
 
@@ -286,7 +286,7 @@ if __name__ == "__main__":
     agent = AgentQ()
 
     if TEST == 1:
-        for _ in range(10):
+        for _ in range(25):
             agent.training(verbose=True)
 
     else:
