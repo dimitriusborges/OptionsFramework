@@ -181,7 +181,7 @@ class AgentQ:
         explore = EPSILON
         episodes = 0
         memory_steps = []   # save the steps of the last 10 episodes
-        total_interactions = 0
+        total_steps = 0
 
         self.q_table.clear()
 
@@ -195,7 +195,11 @@ class AgentQ:
             _, steps = self.play_episode(explore)
 
             memory_steps.append(steps)
-            total_interactions = total_interactions + steps
+
+            if verbose:
+                print("{}".format(steps), end=" ")
+
+            total_steps = total_steps + steps
 
             if episodes % UPDATE == 0:
 
@@ -209,13 +213,12 @@ class AgentQ:
                 if verbose:
 
                     if verbose:
-                        print(memory_steps)
-                        print("Solved in {} episodes, with a total of {} interactions. "
-                              "Best result was {}".format(episodes, total_interactions, min(memory_steps)))
+                        print("\nModel converged on {} episodes, afeter executing {} interactions. "
+                              "Best result was {}\n".format(episodes, total_steps, min(memory_steps)))
 
                 break
 
-        return episodes, total_interactions
+        return episodes, total_steps
 
     def random_hyper_parameter_tuning(self):
         """

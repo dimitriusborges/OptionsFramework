@@ -408,13 +408,15 @@ class AgentQOA:
 
             steps = self.play_episode(explore, options_trained=False)
             episodes += 1
+
+            if verbose:
+                print("{}".format(steps), end=" ")
+
             model_conv_steps += steps
 
             # min tracer
             if steps < min_steps:
                 min_steps = steps
-                # if verbose:
-                #     print("New min found {}, on episode {}".format(min_steps, episodes))
 
             if episodes % UPDATE == 0:
 
@@ -426,7 +428,7 @@ class AgentQOA:
             # 5 consecutive mins = convergence
             if min_steps <= CONVERGENCE:
                 if verbose:
-                    print("Model converged on {} episodes, after executing {} steps. "
+                    print("\nModel converged on {} episodes, after executing {} steps. "
                           "Best result was {} steps".format(episodes, model_conv_steps, min_steps))
                 break
 
