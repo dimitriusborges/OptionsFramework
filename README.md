@@ -24,9 +24,9 @@ The environment is inspired by the one defined in the main article:
 >As a simple illustration of planning with options, consider the rooms example, a
 >gridworld environment of four rooms as shown in Fig. 2. The cells of the grid correspond to
 >the states of the environment. From any state the agent can perform one of four actions, up,
->down, left or right, which have a stochastic effect. With probability 2=3, the actions
->cause the agent to move one cell in the corresponding direction, and with probability 1=3,
->the agent moves instead in one of the other three directions, each with probability 1=9. In
+>down, left or right, which have a stochastic effect. With probability 2/3, the actions
+>cause the agent to move one cell in the corresponding direction, and with probability 1/3,
+>the agent moves instead in one of the other three directions, each with probability 1/9. In
 >either case, if the movement would take the agent into a wall then the agent remains in the
 >same cell. For now we consider a case in which rewards are zero on all state transitions.
 
