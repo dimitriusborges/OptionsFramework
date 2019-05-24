@@ -292,16 +292,16 @@ class AgentQ:
 
             writer = csv.writer(csvfile)
 
-            colunas = [("episodio"), ("passos")]
-            writer.writerow(colunas)
+            columns = [("Episodes"), ("Steps")]
+            writer.writerow(columns)
 
-            episodio = 1
+            episodes = 1
             for step in steps_episode:
 
-                formatado = [(episodio), step]
-                writer.writerow(formatado)
+                formatted = [(episodes), step]
+                writer.writerow(formatted)
 
-                episodio += 1
+                episodes += 1
 
 
 if __name__ == "__main__":

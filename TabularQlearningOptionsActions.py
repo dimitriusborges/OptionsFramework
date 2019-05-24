@@ -463,19 +463,13 @@ class AgentQOA:
 
             else:
 
-                # EPSILON = random.choices(epsilons)[0]
-                # ALPHA = random.choices(alphas)[0]
-                # GAMMA = random.choices(gammas)[0]
-
-                EPSILON = 0.2
-                ALPHA = 1
-                GAMMA = 0.9
-                TRAINING = 50
+                EPSILON = random.choices(epsilons)[0]
+                ALPHA = random.choices(alphas)[0]
+                GAMMA = random.choices(gammas)[0]
 
                 train = (EPSILON, ALPHA, GAMMA)
 
                 if train in trained:
-                    break
                     continue
                 else:
                     trained.append(train)
@@ -512,16 +506,16 @@ class AgentQOA:
 
             writer = csv.writer(csvfile)
 
-            colunas = [("episodio"), ("passos")]
-            writer.writerow(colunas)
+            columns = [("Episodes"), ("Steps")]
+            writer.writerow(columns)
 
-            episodio = 1
+            episodes = 1
             for step in steps_episode:
 
-                formatado = [(episodio), step]
-                writer.writerow(formatado)
+                formatted = [(episodes), step]
+                writer.writerow(formatted)
 
-                episodio += 1
+                episodes += 1
 
 
 if __name__ == "__main__":
