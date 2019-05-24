@@ -2,6 +2,7 @@ import collections
 import random
 from RoomEnv import TheRoom
 import numpy as np
+import csv
 
 """
 Tabular Q-learning with options applied to "The Room" environment.
@@ -367,6 +368,7 @@ class AgentQO:
         explore = EPSILON
         model_conv_steps = 0
         min_steps = 9999
+        steps_episodes = []
 
         while 1:
 
@@ -377,11 +379,11 @@ class AgentQO:
                 print("{}".format(steps), end=" ")
 
             model_conv_steps += steps
+            steps_episodes.append(steps)
 
             # min tracer
             if steps < min_steps:
                 min_steps = steps
-
 
             if episodes % UPDATE == 0:
 
@@ -397,7 +399,7 @@ class AgentQO:
                           "Best result was {} steps\n".format(episodes, model_conv_steps, min_steps))
                 break
 
-        return episodes, model_conv_steps
+        return episodes, model_conv_steps, steps_episodes
 
     def random_hyper_parameter_tuning(self):
         """
@@ -432,7 +434,7 @@ class AgentQO:
                 train = (EPSILON, ALPHA, GAMMA)
 
                 if train in trained:
-                    continue
+                    break
                 else:
                     trained.append(train)
 
@@ -443,7 +445,7 @@ class AgentQO:
 
                 for _ in range(TRAINING):
                     # print("Test:", train_test, _)
-                    ep, inter = self.training()
+                    ep, inter, _ = self.training()
 
                     episodes.append(ep)
                     interactions.append(inter)
@@ -462,12 +464,33 @@ class AgentQO:
 
         print("Best steps: {}, std {}. Best parameters {}.".format(best_steps, lower_std, best_hyper))
 
+    def export_csv(self, steps_episode):
+
+        with open("./q-learningOptions.csv", "w", newline='') as csvfile:
+
+            writer = csv.writer(csvfile)
+
+            colunas = [("episodio"), ("passos")]
+            writer.writerow(colunas)
+
+            episodio = 1
+            for step in steps_episode:
+
+                formatado = [(episodio), step]
+                writer.writerow(formatado)
+
+                episodio += 1
+
 
 if __name__ == "__main__":
 
     agent = AgentQO()
 
     if TEST == 1:
+
+        _, _, steps_ep = agent.training(verbose=True)
+        agent.export_csv(steps_ep)
+
         for _ in range(25):
             agent.training(True)
     else:

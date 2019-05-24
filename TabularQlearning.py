@@ -2,6 +2,7 @@ import collections
 import random
 from RoomEnv import TheRoom
 import numpy as np
+import csv
 
 """
 Tabular Q-learning applied to "The Room" environment.
@@ -179,46 +180,48 @@ class AgentQ:
         """
 
         explore = EPSILON
-        episodes = 0
-        memory_steps = []   # save the steps of the last 10 episodes
+        episode = 0
         total_steps = 0
+        min_steps = 9999999
+        steps_episode = []
 
         self.q_table.clear()
 
         while 1:
 
-            episodes += 1
-
-            if len(memory_steps) >= 10:
-                memory_steps.pop(0)
+            episode += 1
 
             _, steps = self.play_episode(explore)
-
-            memory_steps.append(steps)
 
             if verbose:
                 print("{}".format(steps), end=" ")
 
             total_steps = total_steps + steps
 
-            if episodes % UPDATE == 0:
+            steps_episode.append(steps)
+
+            # min tracer
+            if steps < min_steps:
+                min_steps = steps
+
+            if episode % UPDATE == 0:
 
                 if explore < DECAY:
                     explore = MIN_EPSILON
                 else:
                     explore = explore - DECAY
 
-            if min(memory_steps) <= CONVERGENCE:
+            if min_steps <= CONVERGENCE:
                 """"""
                 if verbose:
 
                     if verbose:
                         print("\nModel converged on {} episodes, afeter executing {} interactions. "
-                              "Best result was {}\n".format(episodes, total_steps, min(memory_steps)))
+                              "Best result was {}\n".format(episode, total_steps, min_steps))
 
                 break
 
-        return episodes, total_steps
+        return episode, total_steps, steps_episode
 
     def random_hyper_parameter_tuning(self):
         """
@@ -264,7 +267,7 @@ class AgentQ:
 
                 for _ in range(TRAINING):
                     # print("Test:", train_test, _)
-                    ep, inter = self.training()
+                    ep, inter, _ = self.training()
 
                     episodes.append(ep)
                     interactions.append(inter)
@@ -283,12 +286,33 @@ class AgentQ:
 
         print("Best steps: {}, std {}. Best parameters {}.".format(best_steps, lower_std, best_hyper))
 
+    def export_csv(self, steps_episode):
+
+        with open("./q-learning.csv", "w", newline='') as csvfile:
+
+            writer = csv.writer(csvfile)
+
+            colunas = [("episodio"), ("passos")]
+            writer.writerow(colunas)
+
+            episodio = 1
+            for step in steps_episode:
+
+                formatado = [(episodio), step]
+                writer.writerow(formatado)
+
+                episodio += 1
+
 
 if __name__ == "__main__":
 
     agent = AgentQ()
 
     if TEST == 1:
+
+        _, _, steps_ep = agent.training(verbose=True)
+        agent.export_csv(steps_ep)
+
         for _ in range(25):
             agent.training(verbose=True)
 

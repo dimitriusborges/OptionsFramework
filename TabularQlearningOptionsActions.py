@@ -2,6 +2,7 @@ import collections
 import random
 from RoomEnv import TheRoom
 import numpy as np
+import csv
 
 """
 Tabular Q-learning with options and actions applied to "The Room" environment.
@@ -399,26 +400,28 @@ class AgentQOA:
         self.q_table_o7.clear()
         self.q_table_o8.clear()
 
-        episodes = 0
+        episode = 0
         explore = EPSILON
         model_conv_steps = 0
         min_steps = 99999999
+        steps_episode = []
 
         while 1:
 
             steps = self.play_episode(explore, options_trained=False)
-            episodes += 1
+            episode += 1
 
             if verbose:
                 print("{}".format(steps), end=" ")
 
             model_conv_steps += steps
+            steps_episode.append(steps)
 
             # min tracer
             if steps < min_steps:
                 min_steps = steps
 
-            if episodes % UPDATE == 0:
+            if episode % UPDATE == 0:
 
                 if explore < DECAY:
                     explore = MIN_EPSILON
@@ -429,10 +432,10 @@ class AgentQOA:
             if min_steps <= CONVERGENCE:
                 if verbose:
                     print("\nModel converged on {} episodes, after executing {} steps. "
-                          "Best result was {} steps".format(episodes, model_conv_steps, min_steps))
+                          "Best result was {} steps\n".format(episode, model_conv_steps, min_steps))
                 break
 
-        return episodes, model_conv_steps
+        return episode, model_conv_steps, steps_episode
 
     def random_hyper_parameter_tuning(self):
         """
@@ -460,13 +463,19 @@ class AgentQOA:
 
             else:
 
-                EPSILON = random.choices(epsilons)[0]
-                ALPHA = random.choices(alphas)[0]
-                GAMMA = random.choices(gammas)[0]
+                # EPSILON = random.choices(epsilons)[0]
+                # ALPHA = random.choices(alphas)[0]
+                # GAMMA = random.choices(gammas)[0]
+
+                EPSILON = 0.2
+                ALPHA = 1
+                GAMMA = 0.9
+                TRAINING = 50
 
                 train = (EPSILON, ALPHA, GAMMA)
 
                 if train in trained:
+                    break
                     continue
                 else:
                     trained.append(train)
@@ -478,7 +487,7 @@ class AgentQOA:
 
                 for _ in range(TRAINING):
                     # print("Test:", train_test, _)
-                    ep, inter = self.training()
+                    ep, inter, _ = self.training()
 
                     episodes.append(ep)
                     interactions.append(inter)
@@ -497,12 +506,34 @@ class AgentQOA:
 
         print("Best steps: {}, std {}. Best parameters {}.".format(best_steps, lower_std, best_hyper))
 
+    def export_csv(self, steps_episode):
+
+        with open("./q-learningOptionsActions.csv", "w", newline='') as csvfile:
+
+            writer = csv.writer(csvfile)
+
+            colunas = [("episodio"), ("passos")]
+            writer.writerow(colunas)
+
+            episodio = 1
+            for step in steps_episode:
+
+                formatado = [(episodio), step]
+                writer.writerow(formatado)
+
+                episodio += 1
+
 
 if __name__ == "__main__":
 
     agent = AgentQOA()
 
     if TEST == 1:
+
+        _, _, steps_ep = agent.training(True)
+
+        agent.export_csv(steps_ep)
+
         for _ in range(25):
             agent.training(True)
     else:
