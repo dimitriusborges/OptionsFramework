@@ -14,16 +14,20 @@ q-table per option.
 
 """
 
-EPSILON = 0.1
-ALPHA = 1
+EPSILON = 0.2
+ALPHA = 0.4
 GAMMA = 0.9
+
+EPSILON_OPT = 0.1
+ALPHA_OPT = 1
+GAMMA_OPT = 0.9
 
 UPDATE = 1000000000
 DECAY = 0.02
 MIN_EPSILON = 0.02
 TRAINING = 50
 CONVERGENCE = 14
-TEST = 1
+TEST = 0
 
 
 class AgentQO:
@@ -205,10 +209,17 @@ class AgentQO:
         else:
             best_v, _ = self.best_value_and_action(next_s, q_table, option=True)
 
-        old_val = q_table[(state, action)]
-        new_val = reward + (GAMMA ** steps) * best_v
+        if steps > 1:
+            alpha = ALPHA_OPT
+            gamma = GAMMA_OPT
+        else:
+            alpha = ALPHA
+            gamma = GAMMA
 
-        q_table[(state, action)] = (1 - ALPHA) * old_val + ALPHA * new_val
+        old_val = q_table[(state, action)]
+        new_val = reward + (gamma ** steps) * best_v
+
+        q_table[(state, action)] = (1 - alpha) * old_val + alpha * new_val
 
     def play_episode(self, explore=0.0, options_trained=True):
         """
@@ -222,7 +233,7 @@ class AgentQO:
         if options_trained is True:
             options_explore = 0.0
         else:
-            options_explore = explore
+            options_explore = EPSILON_OPT
 
         # number of steps (k = 1) taken until the objective
         total_steps = 0
@@ -409,9 +420,12 @@ class AgentQO:
         episodes = []
         interactions = []
 
-        epsilons = [0.3, 0.1, 0.2]  # [0.01, 0.1, 0.2, 0.3]
-        alphas = [0.4, 0.2, 0.1]    # [0.1, 0.2, 0.3, 0.4, 0.5, 1]
-        gammas = [0.9, 0.95, 0.99]  # [0.9, 0.95, 0.99]
+        # epsilons = [0.01, 0.1, 0.2]
+        epsilons = [0.01, 0.1, 0.2, 0.3]
+        # alphas = [0.2, 1, 0.4]
+        alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 1]
+        # gammas = [0.9, 0.95]
+        gammas = [0.9, 0.95, 0.99]
 
         trained = []
 
@@ -427,14 +441,16 @@ class AgentQO:
 
             else:
 
-                EPSILON = random.choices(epsilons)[0]
-                ALPHA = random.choices(alphas)[0]
-                GAMMA = random.choices(gammas)[0]
+                EPSILON_OPT = random.choices(epsilons)[0]
+                ALPHA_OPT = random.choices(alphas)[0]
+                GAMMA_OPT = random.choices(gammas)[0]
 
-                train = (EPSILON, ALPHA, GAMMA)
+                TRAINING = 100
+
+                train = (EPSILON_OPT, ALPHA_OPT, GAMMA_OPT)
 
                 if train in trained:
-                    break
+                    continue
                 else:
                     trained.append(train)
 
@@ -453,7 +469,7 @@ class AgentQO:
                 mean_int = np.mean(interactions)
                 std_int = np.std(interactions)
 
-                if mean_int < best_steps and std_int < lower_std:
+                if mean_int < best_steps:# and std_int < lower_std:
 
                     best_steps = mean_int
                     lower_std = std_int
