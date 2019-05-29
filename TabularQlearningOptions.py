@@ -14,22 +14,11 @@ q-table per option.
 
 """
 
-EPSILON = 0.3
-ALPHA = 0.2
-GAMMA = 0.9
-
-EPSILON_OPT = 0.2
-ALPHA_OPT = 1
-GAMMA_OPT = 0.9
-
-UPDATE = 1000000000
-DECAY = 0.02
-MIN_EPSILON = 0.02
-
 TRAINING = 100
 CONVERGENCE = 14
-TEST = 1
+TEST = 0
 TRAIN_OPTIONS = False
+OUTLIER = 0
 
 
 class AgentQO:
@@ -39,6 +28,18 @@ class AgentQO:
         Agent is the entity that interacts with the environment
         """
         self.env = TheRoom(initial_state=(1, 1), objective=(7, 9),)     # options=True)
+
+        self.EPSILON = 0.3
+        self.ALPHA = 0.2
+        self.GAMMA = 0.9
+
+        self.EPSILON_OPT = 0.1
+        self.ALPHA_OPT = 0.1
+        self.GAMMA_OPT = 0.1
+
+        self.UPDATE = 1000000000
+        self.DECAY = 0.02
+        self.MIN_EPSILON = 0.02
 
         # general Q-table, with 0 as default value
         self.q_table = collections.defaultdict(float)
@@ -212,11 +213,11 @@ class AgentQO:
             best_v, _ = self.best_value_and_action(next_s, q_table, option=True)
 
         if steps > 1:
-            alpha = ALPHA_OPT
-            gamma = GAMMA_OPT
+            alpha = self.ALPHA_OPT
+            gamma = self.GAMMA_OPT
         else:
-            alpha = ALPHA
-            gamma = GAMMA
+            alpha = self.ALPHA
+            gamma = self.GAMMA
 
         old_val = q_table[(state, action)]
         new_val = reward + (gamma ** steps) * best_v
@@ -235,7 +236,7 @@ class AgentQO:
         if options_trained is True:
             options_explore = 0.0
         else:
-            options_explore = EPSILON_OPT
+            options_explore = self.EPSILON_OPT
 
         # number of steps (k = 1) taken until the objective
         total_steps = 0
@@ -353,7 +354,7 @@ class AgentQO:
 
             state = new_state
 
-            total_reward = (GAMMA**total_steps) * reward
+            total_reward = (self.GAMMA**total_steps) * reward
 
             if is_done:
                 break
@@ -378,7 +379,8 @@ class AgentQO:
         self.env = TheRoom((1, 1), (7, 9))
 
         episodes = 0
-        explore = EPSILON
+        explore = self.EPSILON
+
         model_conv_steps = 0
         min_steps = 9999
         steps_episodes = []
@@ -395,12 +397,12 @@ class AgentQO:
             if steps < min_steps:
                 min_steps = steps
 
-            if episodes % UPDATE == 0:
+            if episodes % self.UPDATE == 0:
 
-                if explore < DECAY:
-                    explore = MIN_EPSILON
+                if explore < self.DECAY:
+                    explore = self.MIN_EPSILON
                 else:
-                    explore = explore - DECAY
+                    explore = explore - self.DECAY
 
             if min_steps <= CONVERGENCE:
 
@@ -471,9 +473,11 @@ class AgentQO:
 
                     interactions.append(inter)
 
-                # self.remove_outliers(interactions, percent=10)
+                self.remove_outliers(interactions, percent=OUTLIER)
                 mean_int = np.mean(interactions)
                 std_int = np.std(interactions)
+
+                print("Avg: {0:.2f}, std {1:.2f}.".format(mean_int, std_int))
 
                 if mean_int < best_steps and std_int < lower_std:
 
@@ -517,7 +521,7 @@ class AgentQO:
 
             self.env = TheRoom(op_starting[op], self.options_B[op])
 
-            total_reward, op_steps, _ = self.play_option(op, explore=EPSILON_OPT)
+            total_reward, op_steps, _ = self.play_option(op, explore=self.EPSILON_OPT)
 
             if verbose is True:
                 print("Option {} converged on {} steps".format(op, op_steps))
@@ -570,8 +574,8 @@ if __name__ == "__main__":
 
     if TEST == 1:
 
-        _, _, steps_ep = agent.training(verbose=True)
-        agent.export_csv(steps_ep)
+        # _, _, steps_ep = agent.training(verbose=True)
+        # agent.export_csv(steps_ep)
 
         for _ in range(25):
             _, steps, _ = agent.training(True)

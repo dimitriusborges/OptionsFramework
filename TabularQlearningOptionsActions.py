@@ -15,20 +15,10 @@ q-table per option.
 
 """
 
-EPSILON = 0.2
-ALPHA = 1
-GAMMA = 0.9
-
-EPSILON_OPT = 0.1
-ALPHA_OPT = 1
-GAMMA_OPT = 0.9
-
-UPDATE = 1000000000
-DECAY = 0.02
-MIN_EPSILON = 0.02
-TRAINING = 50
+TRAINING = 100
 CONVERGENCE = 17
 TEST = 1
+OUTLIER = 5
 
 
 class AgentQOA:
@@ -38,6 +28,18 @@ class AgentQOA:
         Agent is the entity that interacts with the environment
         """
         self.env = TheRoom(initial_state=(1, 1), objective=(10, 9))     # options=True)
+
+        self.EPSILON = 0.1
+        self.ALPHA = 1
+        self.GAMMA = 0.95
+
+        self.EPSILON_OPT = 0.2
+        self.ALPHA_OPT = 1
+        self.GAMMA_OPT = 0.9
+
+        self.UPDATE = 1000000000
+        self.DECAY = 0.02
+        self.MIN_EPSILON = 0.02
 
         # general Q-table, with 0 as default value
         self.q_table = collections.defaultdict(float)
@@ -196,7 +198,7 @@ class AgentQOA:
 
         return action
 
-    def value_update(self, state, action, reward, next_s, q_table, steps=1):
+    def value_update(self, state, action, reward, next_s, q_table, option_action, steps=1):
         """
         update q-table according to the formula
         Q(s,a) = (1 - ALPHA) * oldQ(s,a) + ALPHA * (r + GAMMA * newQ(s,a))
@@ -208,6 +210,7 @@ class AgentQOA:
         :param reward: reward received
         :param next_s:  new state accessed
         :param q_table: q-table being updated
+        :param option_action: if value must be selected between actions and options or just actions
         :param steps: how many steps between s and next_s, required for options value update, since it uses the formula
 
         E{r + (GAMMA**k) * Vo(s')}, where
@@ -217,14 +220,17 @@ class AgentQOA:
         :return:
         """
 
-        best_v, _ = self.best_value_and_action(next_s, q_table, 2)
+        if option_action is True:
+            best_v, _ = self.best_value_and_action(next_s, q_table, 2)
+        else:
+            best_v, _ = self.best_value_and_action(next_s, q_table, 0)
 
         if steps > 1:
-            alpha = ALPHA_OPT
-            gamma = GAMMA_OPT
+            alpha = self.ALPHA_OPT
+            gamma = self.GAMMA_OPT
         else:
-            alpha = ALPHA
-            gamma = GAMMA
+            alpha = self.ALPHA
+            gamma = self.GAMMA
 
         old_val = q_table[(state, action)]
         new_val = reward + (gamma ** steps) * best_v
@@ -243,7 +249,7 @@ class AgentQOA:
         if options_trained is True:
             options_explore = 0.0
         else:
-            options_explore = EPSILON_OPT
+            options_explore = self.EPSILON_OPT
 
         # number of steps (k = 1) taken until the objective
         total_steps = 0
@@ -279,7 +285,7 @@ class AgentQOA:
 
             total_steps += steps
 
-            self.value_update(state, action, reward, new_state, self.q_table, steps)
+            self.value_update(state, action, reward, new_state, self.q_table, True, steps)
 
             total_reward += reward
 
@@ -373,11 +379,11 @@ class AgentQOA:
 
             # if the agent tried to move to a wall, the state doesn't change. If thats the case, there is no update to do
             if state != new_state:
-                self.value_update(state, action, relative_reward, new_state, q_table)
+                self.value_update(state, action, relative_reward, new_state, q_table, False)
 
             state = new_state
 
-            total_reward = (GAMMA**total_steps) * reward
+            total_reward = (self.GAMMA**total_steps) * reward
 
             if is_done:
                 break
@@ -401,7 +407,7 @@ class AgentQOA:
         self.q_table_o8.clear()
 
         episode = 0
-        explore = EPSILON
+        explore = self.EPSILON
         model_conv_steps = 0
         min_steps = 99999999
         steps_episode = []
@@ -421,12 +427,12 @@ class AgentQOA:
             if steps < min_steps:
                 min_steps = steps
 
-            if episode % UPDATE == 0:
+            if episode % self.UPDATE == 0:
 
-                if explore < DECAY:
-                    explore = MIN_EPSILON
+                if explore < self.DECAY:
+                    explore = self.MIN_EPSILON
                 else:
-                    explore = explore - DECAY
+                    explore = explore - self.DECAY
 
             # 5 consecutive mins = convergence
             if min_steps <= CONVERGENCE:
@@ -445,9 +451,13 @@ class AgentQOA:
         episodes = []
         interactions = []
 
-        epsilons = [0.2, 0.3, 0.1]        # [0.01, 0.1, 0.2, 0.3]
-        alphas = [0.2, 0.3, 0.5, 1]             # [0.1, 0.2, 0.3, 0.4, 0.5, 1]
-        gammas = [0.9, 0.95, 0.99]              # [0.9, 0.95, 0.99]
+        epsilons = [0.1, 0.2, 0.3]
+        alphas = [0.1, 0.4, 1]
+        gammas = [0.9, 0.95]
+
+        # epsilons = [0.01, 0.1, 0.2, 0.3]
+        # alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 1]
+        # gammas = [0.9, 0.95, 0.99]
 
         trained = []
 
@@ -466,7 +476,6 @@ class AgentQOA:
                 EPSILON = random.choices(epsilons)[0]
                 ALPHA = random.choices(alphas)[0]
                 GAMMA = random.choices(gammas)[0]
-
                 train = (EPSILON, ALPHA, GAMMA)
 
                 if train in trained:
@@ -486,6 +495,7 @@ class AgentQOA:
                     episodes.append(ep)
                     interactions.append(inter)
 
+                self.remove_outliers(interactions, OUTLIER)
                 mean_int = np.mean(interactions)
                 std_int = np.std(interactions)
 
@@ -494,11 +504,31 @@ class AgentQOA:
                     best_steps = mean_int
                     lower_std = std_int
                     best_hyper = train
-                    print("new min: {}, std {}. Parameters {}".format(best_steps, lower_std, best_hyper))
+                    print("new avg min: {0:.2f}, std {1:.2f}. Parameters {2}".format(best_steps, lower_std, best_hyper))
 
                 train_test += 1
 
-        print("Best steps: {}, std {}. Best parameters {}.".format(best_steps, lower_std, best_hyper))
+        print("Best avg steps: {0:.2f}, std {1:.2f}. Best parameters {2}.".format(best_steps, lower_std, best_hyper))
+
+    def remove_outliers(self, data, percent):
+        """
+
+        :param percent:
+        :return:
+        """
+        if percent > 100:
+            percent = 100
+
+        percent = percent/2
+        percent = percent / 100
+
+        remove_n = int(len(data) * percent)
+
+        for _ in range(0, remove_n):
+            data.remove(max(data))
+
+        for _ in range(0, remove_n):
+            data.remove(min(data))
 
     def export_csv(self, steps_episode):
 
@@ -524,9 +554,8 @@ if __name__ == "__main__":
 
     if TEST == 1:
 
-        _, _, steps_ep = agent.training(True)
-
-        agent.export_csv(steps_ep)
+        #_, _, steps_ep = agent.training(True)
+        #agent.export_csv(steps_ep)
 
         for _ in range(25):
             agent.training(True)

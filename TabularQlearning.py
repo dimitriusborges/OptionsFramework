@@ -11,17 +11,10 @@ Since this values are updated during the Agent-Environment interactions, there i
 tribution to forecast results and apply the bellman equation 
 """
 
-EPSILON = 0.1
-ALPHA = 1
-GAMMA = 0.9
-
-UPDATE = 1000000000
-DECAY = 0.02
-MIN_EPSILON = 0.02
-
 TRAINING = 100
 CONVERGENCE = 17
-TEST = 1
+TEST = 0
+OUTLIER = 0
 
 
 class AgentQ:
@@ -30,6 +23,14 @@ class AgentQ:
         """
         Agent is the entity that interacts with the environment
         """
+        self.EPSILON = 0.3
+        self.ALPHA = 0.2
+        self.GAMMA = 0.9
+
+        self.UPDATE = 1000000000
+        self.DECAY = 0.02
+        self.MIN_EPSILON = 0.02
+
         self.env = TheRoom(initial_state=(1, 1), objective=(10, 9))
 
         self.state = self.env.reset()
@@ -122,9 +123,9 @@ class AgentQ:
         best_v, _ = self.best_value_and_action(next_s)
 
         old_val = self.q_table[(s, a)]
-        new_val = r + GAMMA*best_v
+        new_val = r + self.GAMMA*best_v
 
-        self.q_table[(s, a)] = (1 - ALPHA) * old_val + ALPHA * new_val
+        self.q_table[(s, a)] = (1 - self.ALPHA) * old_val + self.ALPHA * new_val
 
     def play_episode(self, explore=0.0):
         """
@@ -180,7 +181,7 @@ class AgentQ:
         :return:
         """
 
-        explore = EPSILON
+        explore = self.EPSILON
         episode = 0
         total_steps = 0
         min_steps = 9999999
@@ -205,12 +206,12 @@ class AgentQ:
             if steps < min_steps:
                 min_steps = steps
 
-            if episode % UPDATE == 0:
+            if episode % self.UPDATE == 0:
 
-                if explore < DECAY:
-                    explore = MIN_EPSILON
+                if explore < self.DECAY:
+                    explore = self.MIN_EPSILON
                 else:
-                    explore = explore - DECAY
+                    explore = explore - self.DECAY
 
             if min_steps <= CONVERGENCE:
                 """"""
@@ -232,13 +233,13 @@ class AgentQ:
         episodes = []
         interactions = []
 
-        epsilons = [0.01, 0.1]
-        alphas = [1, 0.3]
-        gammas = [0.9, 0.99]
+        # epsilons = [0.1, 0.2, 0.3]
+        # alphas = [0.3, 0.4, 1]
+        # gammas = [0.9]
 
-        # epsilons = [0.01, 0.1, 0.2, 0.3]
-        # alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 1]
-        # gammas = [0.9, 0.95, 0.99]
+        epsilons = [0.1, 0.2, 0.3]
+        alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 1]
+        gammas = [0.9, 0.95, 0.99]
 
         trained = []
 
@@ -254,11 +255,11 @@ class AgentQ:
 
             else:
 
-                EPSILON = random.choices(epsilons)[0]
-                ALPHA = random.choices(alphas)[0]
-                GAMMA = random.choices(gammas)[0]
+                self.EPSILON = random.choices(epsilons)[0]
+                self.ALPHA = random.choices(alphas)[0]
+                self.GAMMA = random.choices(gammas)[0]
 
-                train = (EPSILON, ALPHA, GAMMA)
+                train = (self.EPSILON, self.ALPHA, self.GAMMA)
 
                 if train in trained:
                     continue
@@ -276,9 +277,11 @@ class AgentQ:
                     episodes.append(ep)
                     interactions.append(inter)
 
-                # self.remove_outliers(interactions, 10)
+                self.remove_outliers(interactions, OUTLIER)
                 mean_int = np.mean(interactions)
                 std_int = np.std(interactions)
+
+                print("Avg: {0:.2f}, std {1:.2f}.".format(mean_int, std_int))
 
                 if mean_int < best_steps and std_int < lower_std:
 
