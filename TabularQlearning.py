@@ -11,14 +11,15 @@ Since this values are updated during the Agent-Environment interactions, there i
 tribution to forecast results and apply the bellman equation 
 """
 
-EPSILON = 0.2
-ALPHA = 0.4
+EPSILON = 0.1
+ALPHA = 1
 GAMMA = 0.9
 
 UPDATE = 1000000000
 DECAY = 0.02
 MIN_EPSILON = 0.02
-TRAINING = 50
+
+TRAINING = 100
 CONVERGENCE = 17
 TEST = 1
 
@@ -231,9 +232,13 @@ class AgentQ:
         episodes = []
         interactions = []
 
-        epsilons = [0.1, 0.2, 0.01]     # [0.01, 0.1, 0.2, 0.3]
-        alphas = [0.4, 0.2, 0.3]        # [0.1, 0.2, 0.3, 0.4, 0.5, 1]
-        gammas = [0.99, 0.95, 0.9]      # [0.9, 0.95, 0.99]
+        epsilons = [0.01, 0.1]
+        alphas = [1, 0.3]
+        gammas = [0.9, 0.99]
+
+        # epsilons = [0.01, 0.1, 0.2, 0.3]
+        # alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 1]
+        # gammas = [0.9, 0.95, 0.99]
 
         trained = []
 
@@ -266,12 +271,12 @@ class AgentQ:
                 print("Training {}, with {}".format(train_test, train))
 
                 for _ in range(TRAINING):
-                    # print("Test:", train_test, _)
                     ep, inter, _ = self.training()
 
                     episodes.append(ep)
                     interactions.append(inter)
 
+                # self.remove_outliers(interactions, 10)
                 mean_int = np.mean(interactions)
                 std_int = np.std(interactions)
 
@@ -280,11 +285,29 @@ class AgentQ:
                     best_steps = mean_int
                     lower_std = std_int
                     best_hyper = train
-                    print("new min: {}, std {}. Parameters {}".format(best_steps, lower_std, best_hyper))
+                    print("new avg min: {0:.2f}, std {1:.2f}. Parameters {2}".format(best_steps, lower_std, best_hyper))
 
                 train_test += 1
 
-        print("Best steps: {}, std {}. Best parameters {}.".format(best_steps, lower_std, best_hyper))
+        print("Best avg steps: {0:.2f}, std {1:.2f}. Best parameters {2}.".format(best_steps, lower_std, best_hyper))
+
+    def remove_outliers(self, data, percent):
+        """
+
+        :param percent:
+        :return:
+        """
+
+        percent = percent/2
+        percent = percent / 100
+
+        remove_n = int(len(data) * percent)
+
+        for _ in range(0, remove_n):
+            data.remove(max(data))
+
+        for _ in range(0, remove_n):
+            data.remove(min(data))
 
     def export_csv(self, steps_episode):
 
@@ -310,8 +333,8 @@ if __name__ == "__main__":
 
     if TEST == 1:
 
-        _, _, steps_ep = agent.training(verbose=True)
-        agent.export_csv(steps_ep)
+        # _, _, steps_ep = agent.training(verbose=True)
+        # agent.export_csv(steps_ep)
 
         for _ in range(25):
             agent.training(verbose=True)
