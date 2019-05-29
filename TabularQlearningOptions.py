@@ -14,20 +14,22 @@ q-table per option.
 
 """
 
-EPSILON = 0.2
-ALPHA = 0.4
+EPSILON = 0.3
+ALPHA = 0.2
 GAMMA = 0.9
 
-EPSILON_OPT = 0.1
+EPSILON_OPT = 0.2
 ALPHA_OPT = 1
 GAMMA_OPT = 0.9
 
 UPDATE = 1000000000
 DECAY = 0.02
 MIN_EPSILON = 0.02
-TRAINING = 50
+
+TRAINING = 100
 CONVERGENCE = 14
-TEST = 0
+TEST = 1
+TRAIN_OPTIONS = False
 
 
 class AgentQO:
@@ -386,9 +388,6 @@ class AgentQO:
             steps = self.play_episode(explore, options_trained=False)
             episodes += 1
 
-            if verbose:
-                print("{}".format(steps), end=" ")
-
             model_conv_steps += steps
             steps_episodes.append(steps)
 
@@ -412,19 +411,19 @@ class AgentQO:
 
         return episodes, model_conv_steps, steps_episodes
 
-    def random_hyper_parameter_tuning(self):
+    def random_hyper_parameter_tuning(self, trainining_opts=False):
         """
         :return:
         """
 
-        episodes = []
         interactions = []
 
-        # epsilons = [0.01, 0.1, 0.2]
-        epsilons = [0.01, 0.1, 0.2, 0.3]
-        # alphas = [0.2, 1, 0.4]
-        alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 1]
+        # epsilons = [0.01, 0.2, 0.3]
+        # alphas = [0.2, 1, 0.1]
         # gammas = [0.9, 0.95]
+
+        epsilons = [0.01, 0.1, 0.2, 0.3]
+        alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 1]
         gammas = [0.9, 0.95, 0.99]
 
         trained = []
@@ -441,44 +440,111 @@ class AgentQO:
 
             else:
 
-                EPSILON_OPT = random.choices(epsilons)[0]
-                ALPHA_OPT = random.choices(alphas)[0]
-                GAMMA_OPT = random.choices(gammas)[0]
+                if trainining_opts is True:
+                    EPSILON_OPT = random.choices(epsilons)[0]
+                    ALPHA_OPT = random.choices(alphas)[0]
+                    GAMMA_OPT = random.choices(gammas)[0]
 
-                TRAINING = 100
+                    training = (EPSILON_OPT, ALPHA_OPT, GAMMA_OPT)
+                else:
+                    EPSILON = random.choices(epsilons)[0]
+                    ALPHA = random.choices(alphas)[0]
+                    GAMMA = random.choices(gammas)[0]
 
-                train = (EPSILON_OPT, ALPHA_OPT, GAMMA_OPT)
+                    training = (EPSILON, ALPHA, GAMMA)
 
-                if train in trained:
+                if training in trained:
                     continue
                 else:
-                    trained.append(train)
+                    trained.append(training)
 
-                episodes.clear()
                 interactions.clear()
 
-                print("Training {}, with {}".format(train_test, train))
+                print("Training {}, with {}".format(train_test, training))
 
                 for _ in range(TRAINING):
-                    # print("Test:", train_test, _)
-                    ep, inter, _ = self.training()
 
-                    episodes.append(ep)
+                    if trainining_opts is True:
+                        inter = self.training_options()
+                    else:
+                        _, inter, _ = self.training()
+
                     interactions.append(inter)
 
+                # self.remove_outliers(interactions, percent=10)
                 mean_int = np.mean(interactions)
                 std_int = np.std(interactions)
 
-                if mean_int < best_steps:# and std_int < lower_std:
+                if mean_int < best_steps and std_int < lower_std:
 
                     best_steps = mean_int
                     lower_std = std_int
-                    best_hyper = train
-                    print("new min: {}, std {}. Parameters {}".format(best_steps, lower_std, best_hyper))
+                    best_hyper = training
+                    print("new avg min: {0:.2f}, std {1:.2f}. Parameters {2}".format(best_steps, lower_std, best_hyper))
 
                 train_test += 1
 
-        print("Best steps: {}, std {}. Best parameters {}.".format(best_steps, lower_std, best_hyper))
+        print("Best avg steps: {0:.2f}, std {1:.2f}. Best parameters {2}.".format(best_steps, lower_std, best_hyper))
+
+    def training_options(self, verbose=False):
+        """
+        Train options separated from the main objective
+        :return:
+        """
+
+        total_steps = 0
+
+        op_starting = {
+            12: (1, 1),
+            13: (1, 1),
+            21: self.env.hall_2_4,
+            24: self.env.hall_1_2,
+            31: self.env.hall_3_4,
+            34: self.env.hall_1_3,
+            42: self.env.hall_3_4,
+            43: self.env.hall_2_4}
+
+        self.q_table_o1.clear()
+        self.q_table_o2.clear()
+        self.q_table_o3.clear()
+        self.q_table_o4.clear()
+        self.q_table_o5.clear()
+        self.q_table_o6.clear()
+        self.q_table_o7.clear()
+        self.q_table_o8.clear()
+
+        for op in self.options_space:
+
+            self.env = TheRoom(op_starting[op], self.options_B[op])
+
+            total_reward, op_steps, _ = self.play_option(op, explore=EPSILON_OPT)
+
+            if verbose is True:
+                print("Option {} converged on {} steps".format(op, op_steps))
+
+            total_steps += op_steps
+
+        return total_steps
+
+    def remove_outliers(self, data, percent):
+        """
+
+        :param percent:
+        :return:
+        """
+        if percent > 100:
+            percent = 100
+
+        percent = percent/2
+        percent = percent / 100
+
+        remove_n = int(len(data) * percent)
+
+        for _ in range(0, remove_n):
+            data.remove(max(data))
+
+        for _ in range(0, remove_n):
+            data.remove(min(data))
 
     def export_csv(self, steps_episode):
 
@@ -508,7 +574,7 @@ if __name__ == "__main__":
         agent.export_csv(steps_ep)
 
         for _ in range(25):
-            agent.training(True)
+            _, steps, _ = agent.training(True)
     else:
-        agent.random_hyper_parameter_tuning()
+        agent.random_hyper_parameter_tuning(TRAIN_OPTIONS)
 
