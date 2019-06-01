@@ -18,7 +18,8 @@ q-table per option.
 TRAINING = 100
 CONVERGENCE = 17
 TEST = 1
-OUTLIER = 5
+OUTLIER = 0
+UNIVERSAL_HYPERPARAM = True
 
 
 class AgentQOA:
@@ -31,11 +32,17 @@ class AgentQOA:
 
         self.EPSILON = 0.1
         self.ALPHA = 1
-        self.GAMMA = 0.95
+        self.GAMMA = 0.99
 
-        self.EPSILON_OPT = 0.2
-        self.ALPHA_OPT = 1
-        self.GAMMA_OPT = 0.9
+        if UNIVERSAL_HYPERPARAM is False:
+            self.EPSILON_OPT = 0.2
+            self.ALPHA_OPT = 0.3
+            self.GAMMA_OPT = 0.9
+
+        else:
+            self.EPSILON_OPT = self.EPSILON
+            self.ALPHA_OPT = self.ALPHA
+            self.GAMMA_OPT = self.GAMMA
 
         self.UPDATE = 1000000000
         self.DECAY = 0.02
@@ -451,11 +458,11 @@ class AgentQOA:
         episodes = []
         interactions = []
 
-        epsilons = [0.1, 0.2, 0.3]
-        alphas = [0.1, 0.4, 1]
-        gammas = [0.9, 0.95]
+        epsilons = [0.1]
+        alphas = [1]
+        gammas = [0.9]
 
-        # epsilons = [0.01, 0.1, 0.2, 0.3]
+        # epsilons = [0.1, 0.2, 0.3]
         # alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 1]
         # gammas = [0.9, 0.95, 0.99]
 
@@ -473,10 +480,15 @@ class AgentQOA:
 
             else:
 
-                EPSILON = random.choices(epsilons)[0]
-                ALPHA = random.choices(alphas)[0]
-                GAMMA = random.choices(gammas)[0]
-                train = (EPSILON, ALPHA, GAMMA)
+                self.EPSILON = random.choices(epsilons)[0]
+                self.ALPHA = random.choices(alphas)[0]
+                self.GAMMA = random.choices(gammas)[0]
+
+                # self.EPSILON_OPT = self.EPSILON
+                # self.ALPHA_OPT = self.ALPHA
+                # self.GAMMA_OPT = self.GAMMA
+
+                train = (self.EPSILON, self.ALPHA, self.GAMMA)
 
                 if train in trained:
                     continue
@@ -486,7 +498,7 @@ class AgentQOA:
                 episodes.clear()
                 interactions.clear()
 
-                print("Training {}, with {}".format(train_test, train))
+                print("\nTraining {}, with {}".format(train_test, train))
 
                 for _ in range(TRAINING):
                     # print("Test:", train_test, _)
@@ -498,6 +510,8 @@ class AgentQOA:
                 self.remove_outliers(interactions, OUTLIER)
                 mean_int = np.mean(interactions)
                 std_int = np.std(interactions)
+
+                print("Avg: {0:.2f}, std {1:.2f}.".format(mean_int, std_int))
 
                 if mean_int < best_steps and std_int < lower_std:
 
@@ -516,6 +530,9 @@ class AgentQOA:
         :param percent:
         :return:
         """
+        if percent == 0:
+            return
+
         if percent > 100:
             percent = 100
 
@@ -529,6 +546,17 @@ class AgentQOA:
 
         for _ in range(0, remove_n):
             data.remove(min(data))
+
+    def count_outlier_3sigma(self, data, limit):
+
+        mean = np.mean(data)
+        std = np.std(data)
+
+        up_outliers = [x for x in data if (x > (mean + limit * std))]
+
+        down_outliers = [x for x in data if (x < (mean - limit * std))]
+
+        return len(up_outliers) + len(down_outliers)
 
     def export_csv(self, steps_episode):
 
@@ -554,10 +582,16 @@ if __name__ == "__main__":
 
     if TEST == 1:
 
-        #_, _, steps_ep = agent.training(True)
-        #agent.export_csv(steps_ep)
+        # _, _, steps_ep = agent.training(verbose=True)
+        # agent.export_csv(steps_ep)
 
-        for _ in range(25):
-            agent.training(True)
+        outliers_count = []
+        for _ in range(TRAINING):
+            _, steps, steps_ep = agent.training(False)
+
+            outliers_count.append(agent.count_outlier_3sigma(steps_ep, 3))
+
+        print(len(outliers_count), outliers_count)
+        print(np.mean(outliers_count))
     else:
         agent.random_hyper_parameter_tuning()

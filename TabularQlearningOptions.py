@@ -16,8 +16,9 @@ q-table per option.
 
 TRAINING = 100
 CONVERGENCE = 14
-TEST = 0
+TEST = 1
 TRAIN_OPTIONS = False
+UNIVERSAL_HYPERPARAM = True
 OUTLIER = 0
 
 
@@ -27,15 +28,21 @@ class AgentQO:
         """
         Agent is the entity that interacts with the environment
         """
-        self.env = TheRoom(initial_state=(1, 1), objective=(7, 9),)     # options=True)
+        self.env = TheRoom(initial_state=(1, 1), objective=(7, 9))
 
-        self.EPSILON = 0.3
-        self.ALPHA = 0.2
+        self.EPSILON = 0.2
+        self.ALPHA = 1
         self.GAMMA = 0.9
 
-        self.EPSILON_OPT = 0.1
-        self.ALPHA_OPT = 0.1
-        self.GAMMA_OPT = 0.1
+        if UNIVERSAL_HYPERPARAM is False:
+            self.EPSILON_OPT = 0.2
+            self.ALPHA_OPT = 0.3
+            self.GAMMA_OPT = 0.9
+
+        else:
+            self.EPSILON_OPT = self.EPSILON
+            self.ALPHA_OPT = self.ALPHA
+            self.GAMMA_OPT = self. GAMMA
 
         self.UPDATE = 1000000000
         self.DECAY = 0.02
@@ -420,13 +427,13 @@ class AgentQO:
 
         interactions = []
 
-        # epsilons = [0.01, 0.2, 0.3]
-        # alphas = [0.2, 1, 0.1]
-        # gammas = [0.9, 0.95]
+        epsilons = [0.2]
+        alphas = [1]
+        gammas = [0.9]
 
-        epsilons = [0.01, 0.1, 0.2, 0.3]
-        alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 1]
-        gammas = [0.9, 0.95, 0.99]
+        # epsilons = [0.1, 0.2, 0.3]
+        # alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 1]
+        # gammas = [0.9, 0.95, 0.99]
 
         trained = []
 
@@ -443,17 +450,21 @@ class AgentQO:
             else:
 
                 if trainining_opts is True:
-                    EPSILON_OPT = random.choices(epsilons)[0]
-                    ALPHA_OPT = random.choices(alphas)[0]
-                    GAMMA_OPT = random.choices(gammas)[0]
+                    self.EPSILON_OPT = random.choices(epsilons)[0]
+                    self.ALPHA_OPT = random.choices(alphas)[0]
+                    self.GAMMA_OPT = random.choices(gammas)[0]
 
-                    training = (EPSILON_OPT, ALPHA_OPT, GAMMA_OPT)
+                    training = (self.EPSILON_OPT, self.ALPHA_OPT, self.GAMMA_OPT)
                 else:
-                    EPSILON = random.choices(epsilons)[0]
-                    ALPHA = random.choices(alphas)[0]
-                    GAMMA = random.choices(gammas)[0]
+                    self.EPSILON = random.choices(epsilons)[0]
+                    self.ALPHA = random.choices(alphas)[0]
+                    self.GAMMA = random.choices(gammas)[0]
 
-                    training = (EPSILON, ALPHA, GAMMA)
+                    # self.EPSILON_OPT = self.EPSILON
+                    # self.ALPHA_OPT = self.ALPHA
+                    # self.GAMMA_OPT = self.GAMMA
+
+                    training = (self.EPSILON, self.ALPHA, self.GAMMA)
 
                 if training in trained:
                     continue
@@ -462,7 +473,7 @@ class AgentQO:
 
                 interactions.clear()
 
-                print("Training {}, with {}".format(train_test, training))
+                print("\nTraining {}, with {}".format(train_test, training))
 
                 for _ in range(TRAINING):
 
@@ -536,6 +547,9 @@ class AgentQO:
         :param percent:
         :return:
         """
+        if percent == 0:
+            return
+
         if percent > 100:
             percent = 100
 
@@ -549,6 +563,17 @@ class AgentQO:
 
         for _ in range(0, remove_n):
             data.remove(min(data))
+
+    def count_outlier_3sigma(self, data, limit):
+
+        mean = np.mean(data)
+        std = np.std(data)
+
+        up_outliers = [x for x in data if (x > (mean + limit * std))]
+
+        down_outliers = [x for x in data if (x < (mean - limit * std))]
+
+        return len(up_outliers) + len(down_outliers)
 
     def export_csv(self, steps_episode):
 
@@ -577,8 +602,15 @@ if __name__ == "__main__":
         # _, _, steps_ep = agent.training(verbose=True)
         # agent.export_csv(steps_ep)
 
-        for _ in range(25):
-            _, steps, _ = agent.training(True)
+        outliers_count = []
+        for _ in range(TRAINING):
+            _, steps, steps_ep = agent.training(False)
+
+            outliers_count.append(agent.count_outlier_3sigma(steps_ep, 3))
+
+        print(len(outliers_count), outliers_count)
+        print(np.mean(outliers_count))
+
     else:
         agent.random_hyper_parameter_tuning(TRAIN_OPTIONS)
 

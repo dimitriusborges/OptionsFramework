@@ -13,8 +13,8 @@ tribution to forecast results and apply the bellman equation
 
 TRAINING = 100
 CONVERGENCE = 17
-TEST = 0
-OUTLIER = 0
+TEST = 1
+OUTLIER = 5
 
 
 class AgentQ:
@@ -23,9 +23,9 @@ class AgentQ:
         """
         Agent is the entity that interacts with the environment
         """
-        self.EPSILON = 0.3
-        self.ALPHA = 0.2
-        self.GAMMA = 0.9
+        self.EPSILON = 0.2
+        self.ALPHA = 1
+        self.GAMMA = 0.99
 
         self.UPDATE = 1000000000
         self.DECAY = 0.02
@@ -233,13 +233,13 @@ class AgentQ:
         episodes = []
         interactions = []
 
-        # epsilons = [0.1, 0.2, 0.3]
-        # alphas = [0.3, 0.4, 1]
-        # gammas = [0.9]
+        epsilons = [0.2]
+        alphas = [1, 0.2]
+        gammas = [0.99, 0.9]
 
-        epsilons = [0.1, 0.2, 0.3]
-        alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 1]
-        gammas = [0.9, 0.95, 0.99]
+        # epsilons = [0.1, 0.2, 0.3]
+        # alphas = [0.1, 0.2, 0.3, 0.4, 0.5, 1]
+        # gammas = [0.9, 0.95, 0.99]
 
         trained = []
 
@@ -300,6 +300,11 @@ class AgentQ:
         :param percent:
         :return:
         """
+        if percent == 0:
+            return
+
+        if percent > 100:
+            percent = 100
 
         percent = percent/2
         percent = percent / 100
@@ -311,6 +316,17 @@ class AgentQ:
 
         for _ in range(0, remove_n):
             data.remove(min(data))
+
+    def count_outlier_3sigma(self, data, limit):
+
+        mean = np.mean(data)
+        std = np.std(data)
+
+        up_outliers = [x for x in data if (x > (mean + limit * std))]
+
+        down_outliers = [x for x in data if (x < (mean - limit * std))]
+
+        return len(up_outliers) + len(down_outliers)
 
     def export_csv(self, steps_episode):
 
